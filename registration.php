@@ -1,6 +1,9 @@
 <?php  
     include "includes/connect.php";
 
+    $user_exists = 0;
+    $hospital_exists = 0;
+
     if(isset($_POST['submit_user']))
     {
         $user_email = $_POST['u_email'];
@@ -9,10 +12,27 @@
         $b_group = $_POST['blood_group'];
         $b_type = $_POST['blood_type'];
 
+        $query_check = "SELECT * FROM users WHERE email = ?";
+        $stmt_check = $conn->prepare($query_check);
+        $stmt_check->bind_param('s', $user_email);
+        $stmt_check->execute();
+        
+        $result_check = $stmt_check->get_result();
+        $row_num = $result_check->num_rows;
+        if($row_num)
+        {
+            $user_exists = 1;
+        }
+
         $query = "INSERT INTO users (email, name, password, b_group, b_type) VALUES(?, ?, ?, ?, ?)";
         $stmt = $conn->prepare($query);
         $stmt->bind_param('sssss', $user_email, $user_name, $user_password, $b_group, $b_type);
         $stmt->execute();
+
+        if($stmt)
+        {
+            header('location:login3.php');
+        }
 
     }
     
@@ -23,42 +43,90 @@
         $state = $_POST['state'];
         $h_email = $_POST['h_email'];
         $h_password = $_POST['h_password'];
+        
+        $h_image = $_FILES['h_image']['name'];
+        $h_image_tmp = $_FILES['h_image']['tmp_name'];
 
-        $query = "INSERT INTO hospitals (name, address, state, email, password) VALUES(:name, :address, :state, :email, :password)";
-        // $query = "INSERT INTO hospitals (name, address, state, email, password) VALUES(?, ?, ?, ?, ?)";
+        $query_check = "SELECT * FROM hospitals WHERE email = :email OR name = :name";
+        
 
-        // $stmt = $conn->prepare($query);
-        // $stmt->bind_param('sssss', $h_name, $h_address, $state, $h_email, $h_password);
-        // $stmt->execute();
-/* The line ` = "INSERT INTO hospitals (name, address, state, email, password)
-VALUES(:name, :address, :state, :email, :password)";` is preparing an SQL query to insert
-data into the `hospitals` table. */
+        $stmt_check = $conn_PDO->prepare($query_check);
+        $stmt_check->bindParam(':email', $h_email);
+        $stmt_check->bindParam(':name', $h_name);
+        $stmt_check->execute();
+        $count = $stmt_check->rowCount();
 
-        $stmt = $conn_PDO->prepare($query);
-        // exit();
-        $stmt->bindParam(':name', $h_name);
-        $stmt->bindParam(':address', $h_address);
-        $stmt->bindParam(':state', $state);
-        $stmt->bindParam(':email', $h_email);
-        $stmt->bindParam(':password', $h_password);
-        $stmt->execute();
+        if($count)
+        {
+            $hospital_exists  = 1;
+        }
+
+
+            $query = "INSERT INTO hospitals (name, address, state, email, password, image) VALUES(:name, :address, :state, :email, :password, :image)";
+            // $query = "INSERT INTO hospitals (name, address, state, email, password) VALUES(?, ?, ?, ?, ?)";
+
+            // $stmt = $conn->prepare($query);
+            // $stmt->bind_param('sssss', $h_name, $h_address, $state, $h_email, $h_password);
+            // $stmt->execute();
+    /* The line ` = "INSERT INTO hospitals (name, address, state, email, password)
+    VALUES(:name, :address, :state, :email, :password)";` is preparing an SQL query to insert
+    data into the `hospitals` table. */
+
+            $stmt = $conn_PDO->prepare($query);
+            // exit();
+            $stmt->bindParam(':name', $h_name);
+            $stmt->bindParam(':address', $h_address);
+            $stmt->bindParam(':state', $state);
+            $stmt->bindParam(':email', $h_email);
+            $stmt->bindParam(':password', $h_password);
+            $stmt->bindParam(':image', $h_image);
+            $stmt->execute();
+
+            
+        if($stmt)
+        {
+            move_uploaded_file($h_image_tmp, 'uploads/'.$h_image);   
+            header('location:login3.php');
+
+        }
 
     }
 ?>
 
 
-<!DOCTYPE html>
-<html lang="en">
+<?php 
+    include 'includes/header.php';
+    include 'includes/top-navbar.php';
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blood Bank Registration</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
-</head>
-
-<body>
+?>
     <div class="container py-5 ">
+
+            <?php 
+                if($hospital_exists==1)
+                {
+                 
+            ?>
+            <div class="alert alert-danger col-6" role="alert">
+                Ooops🥺,  Hospital already exists with this email or hospital name !!!<br>
+                Try again with different email...
+            </div>  
+            <?php 
+                }
+            ?>
+
+            <?php 
+                if($user_exists==1)
+                {
+                 
+            ?>
+            <div class="alert alert-danger col-6" role="alert">
+                Ooops🥺,  User already exists with this email !!!<br>
+                Try again with different email...
+            </div>  
+            <?php 
+                }
+            ?>
+
 
     <div id="button" class="mb-5 px-5">
         <h4>Click on the below button to open the registration form</h4>
@@ -73,17 +141,17 @@ data into the `hospitals` table. */
         <form action="" method="POST" enctype="multipart/form-data" id="hospital_form" style="display:none;">
             <div class="form-group col-6">
                 <label for="name">Hospital Name</label>
-                <input type="text" class="form-control" id="name" aria-describedby="emailHelp" placeholder="Enter hospital name" name="h_name">
+                <input type="text" class="form-control" id="name" aria-describedby="emailHelp" placeholder="Enter hospital name" name="h_name" required>
                 
             </div>
             <div class="form-group col-6">
                 <label for="address">Address</label>
-                <input type="text" class="form-control" id="h_address" aria-describedby="emailHelp" placeholder="Enter hospital address" name="h_address">
+                <input type="text" class="form-control" id="h_address" aria-describedby="emailHelp" placeholder="Enter hospital address" name="h_address" required>
                 
             </div>
             <div class="form-group col-6">
                 <label for="state">State</label>
-                <select name="state" id="state" class="form-control ">
+                <select name="state" id="state" class="form-control " required>
                     <option value="">Select State</option>
                     <option value="haryana">haryana</option>
                     <option value="delhi">delhi</option>
@@ -92,18 +160,24 @@ data into the `hospitals` table. */
                 
             </div>
             <div class="form-group col-6">
+                <label for="image">Hospital Image</label>
+                <input type="file" class="form-control" id="email" aria-describedby="emailHelp"  name="h_image" oninput="check_size(this)" required>
+                
+            </div>
+            <div class="form-group col-6">
                 <label for="email">Hospital Email</label>
-                <input type="email" class="form-control" id="email" aria-describedby="emailHelp" placeholder="Enter hospital name" name="h_email">
+                <input type="email" class="form-control" id="email" aria-describedby="emailHelp" placeholder="Enter hospital name" name="h_email" required>
                 
             </div>
             <div class="form-group col-6">
                 <label for="password">Password</label>
-                <input type="text" class="form-control" id="h_password" name="h_password" aria-describedby="emailHelp" placeholder="Enter password">
+                <input type="text" class="form-control" id="h_password" name="h_password" aria-describedby="emailHelp"
+                 placeholder="Enter password" required>
                 
             </div>
             <div class="form-group col-6">
                 <label for="h_password2">Confirm Password</label>
-                <input type="password" class="form-control" id="h_password2" placeholder="Enter your password again" oninput="match_password(h_password, h_password2)">
+                <input type="password" class="form-control" id="h_password2" placeholder="Enter your password again" oninput="match_password('h_password', 'h_password2')" required>
                 <span class="text-danger mx-3 " id="h_password_span" style="display:none;">password doesn't match</span>
                 <i class="fa-solid fa-check fa-2x text-success mx-3" style="display:none;" id="h_password_icon"></i>
             </div>
@@ -115,17 +189,17 @@ data into the `hospitals` table. */
         <form action="" method="POST" enctype="multipart/form-data" id="user_form" style="display:none;">
             <div class="form-group col-6">
                 <label for="u_name">User Name</label>
-                <input type="text" class="form-control" id="u_name" aria-describedby="emailHelp" placeholder="Enter user name" name="u_name">
+                <input type="text" class="form-control" id="u_name" aria-describedby="emailHelp" placeholder="Enter user name" name="u_name" required>
                 
             </div>
             <div class="form-group col-6">
                 <label for="u_email">User Email</label>
-                <input type="email" class="form-control" id="u_email" aria-describedby="emailHelp" placeholder="Enter user name" name="u_email">
+                <input type="email" class="form-control" id="u_email" aria-describedby="emailHelp" placeholder="Enter user name" name="u_email" required>
                 
             </div>
             <div class="form-group col-6">
                 <label for="blood_group">Blood Group</label>
-                <select name="blood_group" id="blood_group" class="form-control ">
+                <select name="blood_group" id="blood_group" class="form-control " required>
                     <option value="">Select blood group</option>
                     <option value="A">A</option>
                     <option value="B">B</option>
@@ -136,7 +210,7 @@ data into the `hospitals` table. */
             </div>
             <div class="form-group col-6">
                 <label for="blood_type">Blood Group Type</label>
-                <select name="blood_type" id="blood_type" class="form-control ">
+                <select name="blood_type" id="blood_type" class="form-control " required>
                     <option value="">Select blood group type</option>
                     <option value="+">+</option>
                     <option value="-">-</option>
@@ -145,13 +219,13 @@ data into the `hospitals` table. */
             </div>
             <div class="form-group col-6">
                 <label for="u_password">Password</label>
-                <input type="text" class="form-control" id="u_password" name="u_password" aria-describedby="emailHelp" placeholder="Enter password">
+                <input type="text" class="form-control" id="u_password" name="u_password" aria-describedby="emailHelp" placeholder="Enter password" required>
                 
             </div>
             <div class="form-group col-6">
                 <label for="u_password2">Confirm Password</label>
                 <input type="password" class="form-control" id="u_password2" placeholder="Enter your password again"
-                oninput="match_password('u_password', 'u_password2')">
+                oninput="match_password('u_password', 'u_password2')" required>
                 <span class="text-danger mx-3 " id="u_password_span" style="display:none;">password doesn't match</span>
                 <i class="fa-solid fa-check fa-2x text-success mx-3" style="display:none;" id="u_password_icon"></i>
             </div>
@@ -159,13 +233,19 @@ data into the `hospitals` table. */
             <button type="submit" class="btn btn-primary submit-button " name="submit_user" id="u_btn" disabled data-toggle="popover" data-placement = "right" data-content = "Entered password and confirm password doesn't match">Submit</button>
         </form>
     </div>
-</body>
+
+    
+<?php 
+    include 'includes/footer.php';
+
+?>
+<!-- </body>
 
 <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" /> -->
 
 <script src="registration.js"></script>
 <script>

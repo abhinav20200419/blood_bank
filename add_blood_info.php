@@ -1,7 +1,14 @@
 <?php  
-    session_start();
+    // session_start();
     include "includes/connect.php";
-    $_SESSION['hospital_id'] = 2;
+    
+    include 'includes/header.php';
+    include 'includes/top-navbar.php';
+    // $_SESSION['hospital_id'] = 2;
+    if(!isset($_SESSION['hospital_id']))
+    {
+        header('location:login3.php');
+    }
 
     if(isset($_POST['blood']))
     {
@@ -10,33 +17,46 @@
         $b_type = $_POST['blood_type'];
         $units = $_POST['units'];
 
-        $query = "INSERT INTO blood_units (hospital_id, b_group, b_type, units) VALUES(:h_id, :b_group, :b_type, :units)";
-        $stmt = $conn_PDO->prepare($query);
-        $stmt->bindParam(':h_id', $hospital_id, PDO::PARAM_INT);
-        $stmt->bindParam(':b_group', $b_group);
-        $stmt->bindParam(':b_type', $b_type);
-        $stmt->bindParam(':units', $units, PDO::PARAM_INT);
+        $check = "SELECT * FROM blood_units WHERE hospital_id = :h_id AND b_group = :bg AND b_type = :bt";
+        $stmt_check = $conn_PDO->prepare($check);
+        $stmt_check->bindParam(':h_id', $hospital_id, PDO::PARAM_INT);
+        $stmt_check->bindParam(':bg', $b_group);
+        $stmt_check->bindParam(':bt', $b_type);
+        $stmt_check->execute();
+        $coun_check = $stmt_check->rowCount();
+        if(!$coun_check)
+        {
 
-        $stmt->execute();
+            $query = "INSERT INTO blood_units (hospital_id, b_group, b_type, units) VALUES(:h_id, :b_group, :b_type, :units)";
+            $stmt = $conn_PDO->prepare($query);
+            $stmt->bindParam(':h_id', $hospital_id, PDO::PARAM_INT);
+            $stmt->bindParam(':b_group', $b_group);
+            $stmt->bindParam(':b_type', $b_type);
+            $stmt->bindParam(':units', $units, PDO::PARAM_INT);
+    
+            $stmt->execute();
+        }
+        else
+        {
+            $row = $stmt_check->fetch(PDO::FETCH_ASSOC);
+            $new_units = $row['units'] + $units;
+            
+            $update = "UPDATE blood_units SET units = :units WHERE hospital_id = :h_id AND b_group = :bg AND b_type = :bt";
+            $stmt_update = $conn_PDO->prepare($update);
+            $stmt_update->bindParam(':units', $new_units, PDO::PARAM_INT);
+            $stmt_update->bindParam(':h_id', $hospital_id, PDO::PARAM_INT);
+            $stmt_update->bindParam('bg', $b_group);
+            $stmt_update->bindParam('bt', $b_type);
+            $stmt_update->execute();
+        }
+
     }
 
    
     
-
 ?>
 
 
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blood Bank</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
-</head>
-
-<body>
     <div class="container py-5 ">
 
 
@@ -78,14 +98,9 @@
 
         
     </div>
-</body>
-
-<script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
-
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-
+<?php 
+    include 'includes/footer.php';
+?>
 <script src="registration.js"></script>
 
 
